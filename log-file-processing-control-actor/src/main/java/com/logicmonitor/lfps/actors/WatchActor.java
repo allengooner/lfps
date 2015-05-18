@@ -31,6 +31,9 @@ public class WatchActor extends UntypedActor {
 
     @Override
     public void onReceive(Object message) throws Exception {
+        if(logger.isDebugEnabled()) {
+            logger.debug("Watch Actor Received Message:" + message);
+        }
 
         if (message instanceof StartProcessingMessage) {
             start = System.currentTimeMillis();

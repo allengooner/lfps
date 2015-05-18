@@ -14,13 +14,25 @@ import com.logicmonitor.lfps.messages.LogFileScanRequestMessage;
  */
 public class ActorControl {
 
-    public static void startProcessing() {
+    private String logDir;
+
+    public static String ioServiceType = "nio";
+
+    public ActorControl(String logDir) {
+        this.logDir = logDir;
+    }
+
+    public void startProcessing(String ioServiceType) {
+        // FIXME quick and dirty way
+        ActorControl.ioServiceType = ioServiceType;
+
+        // creating the actor system and the actors needed
         final ActorSystem system = ActorSystem.create("LogFileProcessingSystem");
         system.actorOf(Props.create(WatchActor.class), "watchActor");
         ActorRef logFileListingActor = system.actorOf(Props.create(LogFileListingActor.class), "logFileListingActor");
         system.actorOf(Props.create(TaskDispatchingActor.class), "taskDispatchingActor");
         system.actorOf(Props.create(LineNumberRequestingActor.class), "lineNumberRequestingActor");
-        logFileListingActor.tell(new LogFileScanRequestMessage("E:\\logs"), null);
+        logFileListingActor.tell(new LogFileScanRequestMessage(logDir), null);
 
         system.awaitTermination();
     }
@@ -38,7 +50,7 @@ public class ActorControl {
 //        ActorRef lineNumberRequestingActor = system.actorOf(Props.create(LineNumberRequestingActor.class), "lineNumberRequestingActor");
 //        logFileListingActor.tell(new LogFileScanRequestMessage("E:\\logs"), null);
 
-        startProcessing();
+//        new ActorControl("E:\\logs").startProcessing();
     }
 
 

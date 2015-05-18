@@ -2,8 +2,8 @@ package com.logicmonitor.lfps.control;
 
 import com.logicmonitor.lfps.io.FileListReader;
 import com.logicmonitor.lfps.io.IOService;
-import com.logicmonitor.lfps.io.LogFileList;
 import com.logicmonitor.lfps.io.impl.BufferedIOService;
+import com.logicmonitor.lfps.io.impl.FileChannelIOService;
 import com.logicmonitor.util.Profiler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,20 +22,30 @@ public class ThreadHandlerControl {
 
     private static final Logger logger = LoggerFactory.getLogger(ThreadHandlerControl.class);
 
-    private static ExecutorService executor = Executors
-            .newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 5);
+    private ExecutorService executor;
 
 //    private static ExecutorService executor = Executors
 //            .newFixedThreadPool(1);
 
-    private static LineNumberBatchDispatcher lineNumberBatchDispatcher = new LineNumberBatchDispatcher();
+    private File logDir;
 
-    private static FileListReader fileListReader = LogFileList.getFileListReader();
+    private int threadCount = Runtime.getRuntime().availableProcessors();
 
-    private static CountDownLatch countDownLatch;
+    public ThreadHandlerControl(File logDir, int threadCount) {
+        this.logDir = logDir;
+        this.threadCount = threadCount;
+        this.executor = Executors.newFixedThreadPool(threadCount);
+        this.lineNumberBatchDispatcher = new LineNumberBatchDispatcher();
+        this.fileListReader = new FileListReader(logDir);
+    }
 
+    private LineNumberBatchDispatcher lineNumberBatchDispatcher;
 
-    public static void startProcessing() {
+    private FileListReader fileListReader;
+
+    private CountDownLatch countDownLatch;
+
+    public void startProcessing(String ioServiceType) {
         Profiler.start();
 //        Profiler.start("Log file listing");
         String[] logFiles = fileListReader.listSortedFile();
@@ -46,7 +56,7 @@ public class ThreadHandlerControl {
 //        Profiler.enter("Task submission");
         for (int i = 0; i < logFiles.length; i++) {
             executor.submit(
-                    new AddLineNoTask(new File("E:\\logs", logFiles[i]), i, countDownLatch));
+                    new LineProcessingTask(new File("E:\\logs", logFiles[i]), i, countDownLatch, ioServiceType));
         }
 //        Profiler.release();
 
@@ -57,16 +67,16 @@ public class ThreadHandlerControl {
             e.printStackTrace();
         } finally {
             Profiler.release();
-            if(logger.isInfoEnabled()) {
+            if (logger.isInfoEnabled()) {
                 logger.info("Task Summary:\n" + Profiler.dump());
                 logger.info("Total Duration:" + Profiler.getDuration());
             }
         }
 
-        System.exit(0);
+//        System.exit(0);
     }
 
-    private static class AddLineNoTask implements Runnable {
+    private class LineProcessingTask implements Runnable {
 
         private File logFile;
 
@@ -81,12 +91,17 @@ public class ThreadHandlerControl {
 
 //        private ThreadLocal<Long> index = new ThreadLocal<Long>();
 
-        public AddLineNoTask(File logFile, int logFileIndex, CountDownLatch countDownLatch) {
+        public LineProcessingTask(File logFile, int logFileIndex, CountDownLatch countDownLatch, String ioServiceType) {
             this.logFile = logFile;
             this.logFileIndex = logFileIndex;
             this.countDownLatch = countDownLatch;
 //            lineNumberRangeThreadLocal.set();
-            this.ioService = new BufferedIOService();
+            if("io".equalsIgnoreCase(ioServiceType)) {
+                this.ioService = new BufferedIOService();
+            } else if ("nio".equalsIgnoreCase(ioServiceType)) {
+                this.ioService = new FileChannelIOService();
+            }
+
         }
 
         public void run() {
@@ -116,13 +131,6 @@ public class ThreadHandlerControl {
 
                 ioService.writeLineNumberToFile(logFile, range.getStart(), range.getEnd());
 
-//                LineNumberBatchDispatcher.LineNumberRange range = lineNumberBatchDispatcher.dispatch(
-//                        logFileIndex, noOfLines);
-//                if(range.getStart() == -1) {
-//                    Thread.yield();
-//                }
-
-
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
@@ -134,12 +142,12 @@ public class ThreadHandlerControl {
             }
 
             if(logger.isInfoEnabled()) {
-                logger.info("Duration: " + Profiler.getDuration());
+                logger.info("Duration: " + Profiler.getDuration() + "ms");
             }
         }
     }
 
     public static void main(String[] args) {
-        ThreadHandlerControl.startProcessing();
+//        new ThreadHandlerControl().startProcessing();
     }
 }

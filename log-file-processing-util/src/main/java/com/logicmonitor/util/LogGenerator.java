@@ -3,7 +3,6 @@ package com.logicmonitor.util;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -15,21 +14,32 @@ import java.util.Random;
 /**
  * Created by allen.gl on 2015/5/13.
  */
-public abstract class LogGenerator {
+public class LogGenerator {
 
-    private static final String LOG_FILE_PREFIX = "logtest.";
+    private String logFilePrefix = "logtest.";
 
-    private static final String LOG_FILE_POSTFIX = ".log";
+    private String logFilePostfix = ".log";
 
-    private static final int MIN_LENGTH = 100;
+    private int minLength = 100;
 
-    private static final int MAX_LENGTH = 200;
+    private int maxLength = 200;
 
-    private static final int SINGLE_FILE_SIZE_BASE = 1024;
-//    private static final int SINGLE_FILE_SIZE_BASE = 10;
+    private int singleFileSizeBase = 1024;
+//    private int SINGLE_FILE_SIZE_BASE = 10;
 
-    public static void generate(String dir, int fileCount) throws FileNotFoundException,
-                                                                    IOException{
+    public LogGenerator(String logFilePrefix, String logFilePostfix, int minLength, int maxLength,
+                        int singleFileSizeBase) {
+        this.logFilePrefix = logFilePrefix;
+        this.logFilePostfix = logFilePostfix;
+        this.minLength = minLength;
+        this.maxLength = maxLength;
+        this.singleFileSizeBase = singleFileSizeBase;
+    }
+
+    public LogGenerator() {
+    }
+
+    public void generate(String dir, int fileCount) throws IOException {
 
         final File logDir = new File(dir);
         FileUtils.deleteDirectory(logDir);
@@ -46,7 +56,7 @@ public abstract class LogGenerator {
             calendar.add(Calendar.DAY_OF_YEAR, -1);
 
             final String infix = DateUtil.getShortDateString(calendar.getTime());
-            final String fileName = LOG_FILE_PREFIX + infix + LOG_FILE_POSTFIX;
+            final String fileName = logFilePrefix + infix + logFilePostfix;
             final File logFile = new File(logDir, fileName);
             if(logFile.createNewFile()) {
                 FileOutputStream fos = new FileOutputStream(logFile);
@@ -54,15 +64,15 @@ public abstract class LogGenerator {
                 StringBuilder log = new StringBuilder();
 //                log.append(DateUtil.getFullDateString(calendar.getTime())).append(" ");
                 try {
-                    int lineCount = 6 * SINGLE_FILE_SIZE_BASE;
-                    lineCount += random.nextInt(2 * SINGLE_FILE_SIZE_BASE);
+                    int lineCount = 6 * singleFileSizeBase;
+                    lineCount += random.nextInt(2 * singleFileSizeBase);
                     for(int j = 0; j < lineCount; j++) {
                         log.append(DateUtil.getFullDateString(calendar.getTime())).append(" ");
-                        log.append(RandomStringGenerator.nextString(MIN_LENGTH, MAX_LENGTH));
+                        log.append(RandomStringGenerator.nextString(minLength, maxLength));
 
                         calendar.add(Calendar.MILLISECOND, random.nextInt(5));
                     }
-                    ByteBuffer buf = ByteBuffer.allocateDirect(4 * 1024 * 1024 /** 1024*/);
+                    ByteBuffer buf = ByteBuffer.allocateDirect(2 * 1024 * 1024 /** 1024*/);
 //                    ByteBuffer buf = ByteBuffer.allocate(4 * SINGLE_FILE_SIZE_BASE * SINGLE_FILE_SIZE_BASE);
                     int position = buf.position();
                     buf.put(log.toString().getBytes(), position, log.toString().getBytes().length);
@@ -77,7 +87,7 @@ public abstract class LogGenerator {
 
     public static void main(String[] args) {
         try {
-            generate("E:\\logs", 100);
+            new LogGenerator().generate("E:\\logs", 100);
         } catch (IOException e) {
             e.printStackTrace();
         }

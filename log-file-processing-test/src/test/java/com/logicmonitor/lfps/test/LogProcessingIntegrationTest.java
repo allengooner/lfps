@@ -1,9 +1,11 @@
 package com.logicmonitor.lfps.test;
 
 import com.logicmonitor.lfps.control.ActorControl;
+import com.logicmonitor.lfps.control.ThreadHandlerControl;
 import com.logicmonitor.lfps.io.FileListReader;
+import com.logicmonitor.util.LogGenerator;
+import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -14,26 +16,32 @@ import java.io.*;
  */
 public class LogProcessingIntegrationTest {
 
+    private String homeDir = System.getProperty("user.home");
+
     @BeforeTest
     public void generateLogFiles() throws IOException {
-//        LogGenerator.generate("E:\\logs", 100000);
+        new LogGenerator().generate(homeDir, 20);
     }
 
-//    @Test
-//    public void testThreadMode() throws IOException {
-////        String[] logFiles = LogFileList.getFileListReader().listSortedFile();
-////
-////        for(String logFile: logFiles) {
-////
-////        }
-//        ThreadHandlerControl.startProcessing();
-//
-//        testFiles();
-//    }
+    @Test
+    public void testIOThreadMode() throws IOException {
+        new ThreadHandlerControl(new File(homeDir),
+                Runtime.getRuntime().availableProcessors()).startProcessing("io");
+
+        testFiles();
+    }
+
+    @Test
+    public void testNIOThreadMode() throws IOException {
+        new ThreadHandlerControl(new File(homeDir),
+                Runtime.getRuntime().availableProcessors()).startProcessing("nio");
+
+        testFiles();
+    }
 
 
     private void testFiles() throws IOException {
-        final File logDir = new File("E:\\logs");
+        final File logDir = new File(homeDir);
         final String[] oldLogFiles = new FileListReader(logDir).listSortedFile();
         final String[] newLogFiles = new FileListReader(logDir).listSortedFile(
                 new FilenameFilter() {
@@ -45,34 +53,23 @@ public class LogProcessingIntegrationTest {
 
 
         compareLineByLine(logDir, oldLogFiles, newLogFiles);
+
+        for(String newLogFile: newLogFiles) {
+            FileUtils.forceDelete(new File(logDir, newLogFile));
+        }
     }
 
 
     @Test
-    public void testActorMode() throws IOException {
-//        final Object monitor = new Object();
-        ActorControl.startProcessing();
+    public void testIOActorMode() throws IOException {
+        new ActorControl(homeDir).startProcessing("io");
 
-        // wait actors to finish theirs jobs
-//        try {
-//            monitor.wait();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        testFiles();
+    }
 
-//        // wait actors to finish theirs jobs...
-//        // quick and dirty way
-//        for(;;) {
-//            try {
-//                TimeUnit.SECONDS.sleep(1L);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//
-//            if() {
-//                break;
-//            }
-//        }
+    @Test
+    public void testNIOActorMode() throws IOException {
+        new ActorControl(homeDir).startProcessing("nio");
 
         testFiles();
     }
@@ -82,7 +79,7 @@ public class LogProcessingIntegrationTest {
                 "original file count not equal to new");
 
         // compare line by line...
-        long lineNumber = 0L;
+        long lineNumber = 1L;
         for (int i = 0; i < oldLogFiles.length; i++) {
             BufferedReader reader1 = new BufferedReader(
                     new FileReader(new File(logDir, oldLogFiles[i])));
@@ -108,8 +105,4 @@ public class LogProcessingIntegrationTest {
         }
     }
 
-    @AfterTest
-    public void cleanUp() throws IOException {
-//        FileUtils.deleteDirectory(new File("E:\\logs"));
-    }
 }

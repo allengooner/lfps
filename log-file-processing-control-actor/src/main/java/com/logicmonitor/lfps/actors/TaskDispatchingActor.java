@@ -40,6 +40,9 @@ public class TaskDispatchingActor extends UntypedActor {
             }
 
             final String[] logFiles = ((FileListReader) message).listSortedFile();
+
+            getContext().actorSelection("/user/watchActor").tell(new StartProcessingMessage(logFiles.length), getSelf());
+
             final String logDir = ((FileListReader) message).getDir().getAbsolutePath();
             // create parent
 //            getContext().actorOf(Props.create(LogFileLineCountingActor.class, "/countinglogFileLineCountingActor" + i))
@@ -52,7 +55,6 @@ public class TaskDispatchingActor extends UntypedActor {
                         .tell(requestMessage, getSelf());
 //                router.route(requestMessage, getSender());
             }
-            getContext().actorSelection("/user/watchActor").tell(new StartProcessingMessage(logFiles.length), getSelf());
             if(logger.isDebugEnabled()) {
                 logger.debug("Finished dipatching file-reading tasks:" + logFiles.length);
             }

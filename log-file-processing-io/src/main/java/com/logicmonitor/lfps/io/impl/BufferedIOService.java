@@ -51,8 +51,8 @@ public class BufferedIOService implements IOService {
         }
 
 
-        if(lineNumber != end) {
-            throw new RuntimeException(String.format("line number %d != end %d", lineNumber, end));
+        if(lineNumber - 1 != end) {
+            throw new RuntimeException(String.format("line number %d != end %d", lineNumber - 1, end));
         }
     }
 

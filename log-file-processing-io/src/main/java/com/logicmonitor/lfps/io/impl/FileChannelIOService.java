@@ -17,25 +17,31 @@ public class FileChannelIOService implements IOService {
 
     private int bufferSize = 2 * 1024 * 1024;
 
-//    private static byte[] newLine = System.getProperty("line.separator").getBytes();
+    private static byte newLine = "\n".getBytes()[0];   // quick and dirty, consider only '\n', may have problem on some platform
+
     private static String newLineStr = System.getProperty("line.separator");
 
     @Override
     public int readFileLineNumber(File logFile) throws IOException {
+        int lineNumber = 0;
 
         FileInputStream fis = new FileInputStream(logFile);
         FileChannel channel = fis.getChannel();
         try {
             ByteBuffer bb = ByteBuffer.allocateDirect(bufferSize);
             bb.clear();
-//            System.out.println("File size: " + channel.size() / 4);
-            long len = 0;
-            int offset = 0;
-            while ((len = channel.read(bb))!= -1){
+            int len = 0;
+            while ((len = channel.read(bb)) > 0) {
                 bb.flip();
-//                System.out.println("Offset: "+offset+"\tlen: "+len+"\tremaining:"+bb.hasRemaining());
-    //            bb.asIntBuffer().get(ipArr,offset,(int)len/4);
-    //            offset += (int)len/4;
+                byte[] bytes = new byte[len];
+                bb.get(bytes);
+
+                for(byte b : bytes) {
+                    if(newLine == b){   // quick and dirty, consider only '\n', may have problem on some platform
+                        lineNumber++;
+                    }
+                }
+
                 bb.clear();
             }
         } finally {
@@ -43,51 +49,63 @@ public class FileChannelIOService implements IOService {
             fis.close();
         }
 
-        return 0;
+        return lineNumber;
     }
 
     @Override
     public void writeLineNumberToFile(File logFile, long start, long end) throws IOException {
-
 
         BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile));
         File newLogFile = new File(logFile.getAbsolutePath() + ".new");
         newLogFile.createNewFile();
 //        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(newLogFile));
         FileOutputStream fos = new FileOutputStream(newLogFile);
-        FileChannel fc = fos.getChannel();
+        FileChannel wfc = fos.getChannel();
+//        MappedByteBuffer mbb = wfc.map(FileChannel.MapMode.READ_WRITE, 0, wfc.size());
         long lineNumber = start;
         String line;
-        ByteBuffer bb = ByteBuffer.allocateDirect(3 * 1024 * 1024);
+        // FIXME bufferSize should be configurable
+        ByteBuffer bb = ByteBuffer.allocateDirect(bufferSize);  // assume in most cases it won't exceed 2MB
         bb.clear();
         try {
             while ((line = bufferedReader.readLine()) != null) {
+
                 String newLine = lineNumber + " " + line + newLineStr;
+                final byte[] bytesToWrite = newLine.getBytes();
 
-                bb.put(newLine.getBytes());
+                if(bb.remaining() >= bytesToWrite.length) {
+                    bb.put(bytesToWrite);
+                } else {
+                    bb.flip();
+                    while(bb.hasRemaining()) {
+                        wfc.write(bb);
+                    }
+                    bb.clear();
 
-//                bufferedWriter.write(newLine, 0, newLine.length());
-//                bufferedWriter.newLine();
+                    bb.put(bytesToWrite);
+                }
 
 
                 lineNumber++;
             }
 
             bb.flip();
+
             while(bb.hasRemaining()) {
-                fc.write(bb);
+                wfc.write(bb);
             }
+            bb.clear();
 
         } finally {
             bufferedReader.close();
 //            bufferedWriter.close();
-            fc.close();
+            wfc.close();
             fos.close();
         }
 
 
-        if(lineNumber != end) {
-            throw new RuntimeException(String.format("line number %d != end %d", lineNumber, end));
+        if(lineNumber - 1 != end) {
+            throw new RuntimeException(String.format("line number %d != end %d", lineNumber - 1, end));
         }
     }
 
@@ -97,7 +115,7 @@ public class FileChannelIOService implements IOService {
     }
 
     public static void main(String[] args) throws Exception {
-//        long lines = new FileChannelIOService().readFileLineNumber(new File("E:\\logs\\logtest.2015-02-03.log"));
-        new FileChannelIOService().writeLineNumberToFile(new File("E:\\logs\\logtest.2015-02-09.log"), 0L, 13888L);
+//        long lines = new FileChannelIOService().readFileLineNumber(new File("E:\\logs\\logtest.2015-02-07.log"));
+//        new FileChannelIOService().writeLineNumberToFile(new File("E:\\logs\\logtest.2015-02-09.log"), 0L, 6514L);
     }
 }

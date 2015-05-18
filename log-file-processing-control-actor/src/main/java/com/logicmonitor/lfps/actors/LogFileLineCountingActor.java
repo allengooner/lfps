@@ -3,6 +3,10 @@ package com.logicmonitor.lfps.actors;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import com.logicmonitor.lfps.control.ActorControl;
+import com.logicmonitor.lfps.io.IOService;
+import com.logicmonitor.lfps.io.impl.BufferedIOService;
+import com.logicmonitor.lfps.io.impl.FileChannelIOService;
 import com.logicmonitor.lfps.messages.BatchApplyLineNumberMessage;
 import com.logicmonitor.lfps.messages.LineCountingRequestMessage;
 
@@ -19,6 +23,8 @@ public class LogFileLineCountingActor extends UntypedActor {
 //
 //    private volatile ActorSelection actorSelection;
 
+    private IOService ioService;
+
     @Override
     public void onReceive(Object message) throws Exception {
         if (message instanceof LineCountingRequestMessage) {
@@ -29,16 +35,18 @@ public class LogFileLineCountingActor extends UntypedActor {
             if(logger.isDebugEnabled()) {
                 logger.debug("Start counting lines:" + logFile.getAbsolutePath());
             }
-            LineNumberReader reader = new LineNumberReader(new FileReader(logFile));
-            try {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    //ignore
+
+            if(ioService == null) {
+                if ("io".equalsIgnoreCase(ActorControl.ioServiceType)) {
+                    this.ioService = new BufferedIOService();
+                } else if ("nio".equalsIgnoreCase(ActorControl.ioServiceType)) {
+                    this.ioService = new FileChannelIOService();
                 }
+            }
 
-                int noOfLines = reader.getLineNumber();
+            int noOfLines = ioService.readFileLineNumber(logFile);
 
-                if(logger.isDebugEnabled()) {
+            if(logger.isDebugEnabled()) {
                     logger.debug("Finished counting lines:" + logFile.getAbsolutePath() + "|" +
                                  noOfLines + " lines");
                 }
@@ -49,35 +57,7 @@ public class LogFileLineCountingActor extends UntypedActor {
                 getContext().actorSelection("/user/lineNumberRequestingActor").tell(applyLineNumberMessage, getSelf());
 
 
-//                while (!handled) {
-//                    if(actorSelection == null) {
-//                        actorSelection = getContext().actorSelection(
-//                                "/user/lineNumberDispatchingActor");
-//                    }
-//
-//                    TimeUnit.MICROSECONDS.sleep(1L);
-//
-//                    actorSelection.tell(applyLineNumberMessage, getSelf());
-//                }
 
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-//                Profiler.release();
-                reader.close();
-            }
-
-//        } else if (message instanceof LineWritingMessage) {
-//            logger.info("Before forwarding Line Writing Message:" + message);
-//            handled = true;
-//
-//            getContext().actorOf(
-//                    Props.create(LineNumberWritingActor.class).
-//                            withDispatcher("thread-pool-dispatcher"),
-//                    "lineNumberWritingActor" + ((LineWritingMessage) message).getLogFileIndex()).
-//                    tell(message, getSelf());
 
         } else {
             unhandled(message);

@@ -23,7 +23,7 @@ public class LineNumberRequestingActor extends UntypedActor {
 
     private int currentContinuousIndex = -1;
 
-    private long count;
+    private long count = 0;
 
     @Override
     public void onReceive(Object message) throws Exception {
@@ -63,7 +63,7 @@ public class LineNumberRequestingActor extends UntypedActor {
                     int batchCount = toRequest.getBatchCount();
                     final LineNumberRangeMessage range;
                     count += batchCount;
-                    range = new LineNumberRangeMessage(count - batchCount, count - 1);
+                    range = new LineNumberRangeMessage(count - batchCount + 1, count);
 
                     if(logger.isDebugEnabled()) {
                         logger.debug("Dispatching the next line number:" + message + "|" + range);

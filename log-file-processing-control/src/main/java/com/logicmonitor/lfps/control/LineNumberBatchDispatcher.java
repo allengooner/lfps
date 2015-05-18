@@ -39,7 +39,7 @@ public class LineNumberBatchDispatcher {
         } else {
             count += batchCount;
             currentFileIndex++;
-            range = new LineNumberRange(count - batchCount, count - 1);
+            range = new LineNumberRange(count - batchCount + 1, count);
         }
 
         if(logger.isDebugEnabled()) {
