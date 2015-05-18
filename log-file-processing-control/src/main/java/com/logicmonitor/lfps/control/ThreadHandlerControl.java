@@ -141,8 +141,8 @@ public class ThreadHandlerControl {
                 Profiler.release();
             }
 
-            if(logger.isInfoEnabled()) {
-                logger.info("Duration: " + Profiler.getDuration() + "ms");
+            if(logger.isDebugEnabled()) {
+                logger.debug("Duration: " + Profiler.getDuration() + "ms");
             }
         }
     }

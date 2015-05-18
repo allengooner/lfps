@@ -54,8 +54,11 @@ public class LogProcessor {
                 System.exit(0);
             }
 
-            final String homeDir = System.getProperty("user.home");
-            String dir = line.getOptionValue( "logDir", homeDir);
+            String dir = line.getOptionValue( "logDir");
+            if(dir == null) {
+                System.out.println("logDir is required");
+                System.exit(0);
+            }
 
             // generate logs
             if(line.hasOption("generateLog")) {
