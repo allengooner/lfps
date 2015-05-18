@@ -16,7 +16,7 @@ import java.io.*;
  */
 public class LogProcessingIntegrationTest {
 
-    private String homeDir = System.getProperty("user.home");
+    private String homeDir = System.getenv("log.home");
 
     @BeforeTest
     public void generateLogFiles() throws IOException {
